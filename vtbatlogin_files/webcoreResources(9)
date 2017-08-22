@@ -1,0 +1,77 @@
+/*
+ * Variable to store the intervall for the memo edit field content check.
+ */
+var memoEditFieldContentCheckCaller;
+
+
+/*
+ * This function starts an interval to check the memo edit field content (if max length is exceeded).
+ */
+function startMemoEditFieldContentCheck( maxLineLength, maxLines, memoEditFieldId, hintId )
+{
+  memoEditFieldContentCheckCaller = window.setInterval( "limitMemoEditFieldContent( " + maxLineLength + ", " + maxLines + ", '" + memoEditFieldId + "', '" + hintId + "');", 500 );
+}
+
+
+/*
+ * This function stops a running interval to check the memo edit field content and runs it once again,
+ * to ensure that the content is not to long.
+ */
+function stopMemoEditFieldContentCheck( maxLineLength, maxLines, memoEditFieldId, hintId )
+{
+  window.clearInterval( memoEditFieldContentCheckCaller );
+  limitMemoEditFieldContent( maxLineLength, maxLines, memoEditFieldId, hintId );
+}
+
+
+/*
+ * This function does a length check for the given memo edit field. If the space is exceeded, the
+ * content will be cut off and a warning field will be displayed.
+ */
+function limitMemoEditFieldContent( maxLineLength, maxLines, memoEditFieldId, hintId )
+{
+  var originalMemoEditFieldContent = document.getElementById( memoEditFieldId ).value;
+  
+  var memoEditFieldLineLineCounter = 0;
+  var memoEditFieldLines = originalMemoEditFieldContent.split( '\n' );
+  var memoEditFieldContent = '';
+  
+  for( var i = 0; i < memoEditFieldLines.length && memoEditFieldLineLineCounter < maxLines; ++i )
+  {
+    if( memoEditFieldLines[i].length <= maxLineLength )
+    {
+      memoEditFieldContent = memoEditFieldContent + memoEditFieldLines[i];
+      ++memoEditFieldLineLineCounter;
+    }
+    else
+    {
+      for( var splitIndex = 0; splitIndex < memoEditFieldLines[i].length && memoEditFieldLineLineCounter < maxLines; splitIndex += maxLineLength )
+      {
+        var endSplitIndex = Math.min( splitIndex + maxLineLength, memoEditFieldLines[i].length );
+        memoEditFieldContent = memoEditFieldContent + memoEditFieldLines[i].substring( splitIndex, endSplitIndex );
+        ++memoEditFieldLineLineCounter;
+      }
+    }
+    
+    if( i < ( memoEditFieldLines.length - 1 ) && memoEditFieldLineLineCounter < maxLines )	// only add line break if this is not the last line
+    {
+      memoEditFieldContent = memoEditFieldContent + '\n';
+    }
+  }
+  
+  // set the cutted text if neccessary
+  if( memoEditFieldContent != originalMemoEditFieldContent )
+  {
+    document.getElementById( memoEditFieldId ).value = memoEditFieldContent;
+  }
+  
+  // display or hide the hint
+  if( memoEditFieldLineLineCounter == maxLines )
+  {
+    document.getElementById( hintId ).style.display = 'block';
+  }
+  else
+  {
+    document.getElementById( hintId ).style.display = 'none';
+  }
+}

@@ -1,0 +1,147 @@
+function showAsLayer(result) {
+	// overlay already exist? -> update content
+	var resultDiv = $("#" + result.id);
+    var renderProps;
+	
+	if (result.removeOverlay)
+		closeLayer(result.id, true);
+	else if (resultDiv.length != 0) {
+		// only for comments in overlays
+		var tempCommentNodeCache = $(new Array());
+		ajaxEngine.addCommentsToCache(resultDiv[0], tempCommentNodeCache);
+		ajaxEngine.replaceChangedContent(result, tempCommentNodeCache);
+		if (result.createOverlay)
+			throw $
+					.extend(
+							new Error(
+									"Overlay which should create already exists, update content."),
+							{
+								"type" : "overlayCreation",
+								"id" : result.id
+							});
+	} else if (result.createOverlay) {
+
+		renderProps = result.renderProperties;
+
+		resultDiv = $("<div id='" + result.id + "'><\/div>");
+		var containerDiv = $("<div></div>");
+		$("body").append(containerDiv);
+		containerDiv.attr("id", result.id + "Container");
+		containerDiv.attr("class", "LayerContainer");
+
+		var theDialog = resultDiv.dialog({
+			autoOpen : false,
+			modal : renderProps.modal,
+			close : function(event, ui) {
+				$(this).remove();
+				containerDiv.remove();
+				$.ajax({
+					url : "ajaxCommandServlet", 
+					data : { "command" : "overlayRemoved", "id" : result.id },
+					cache : false
+				});
+			}
+		});
+		theDialog.html(result.content);
+		resultDiv.dialog("option", renderProps); // this will set all
+		// props!!!
+
+		var resultDialog = $(resultDiv).parents("div[role=dialog]");
+
+		var topPos = renderProps.topPos;
+		var leftPos = renderProps.leftPos;
+
+		if (!renderProps.showTitleBar) {
+			resultDiv.dialog("option", {
+				dialogClass : "noTitle"
+			});
+		}
+		// put dialog in extra container
+		resultDialog.appendTo(containerDiv);
+
+		var closeDialog = function() {
+			$(resultDiv).dialog("close");
+		};
+		if (renderProps.closeOnMouseOut)
+			resultDialog.bind("mouseleave", closeDialog);
+
+		// it's necessary if we will show content over the bounds of dialog
+		resultDiv.css("overflow", renderProps.overflow);
+		resultDialog.css("overflow", renderProps.overflow);
+		/*
+		 * // Collision with height='auto' if( renderProps.height )
+		 * resultDiv.height( renderProps.height - $( resultDialog ).find(
+		 * ".ui-dialog-titlebar" ).height() );
+		 */
+		
+		if (renderProps.closeOnOutsideClick) {
+			
+				var closeDialogOnOutsideClick = function() {
+					closeDialog();
+					$(document).unbind("click." + result.id + ".close");
+				}
+				resultDiv.mouseover(function() {
+					$(document).unbind("click." + result.id + ".close");
+				});
+				resultDiv.mouseout(function() {
+					$(document).bind("click." + result.id + ".close",
+							closeDialogOnOutsideClick);
+				});
+				$(document).bind("click." + result.id + ".close",
+						closeDialogOnOutsideClick);
+		}
+		// must "refresh" position if create new overlay
+		result.renderProperties.refreshPosition = true;
+	}
+	
+	if (result.renderProperties && result.renderProperties.refreshPosition) {
+	    renderProps = result.renderProperties;
+		switch (renderProps.positionType) {
+		case 'Absolute':
+			if (topPos && leftPos)
+				resultDialog.offset({
+					top : topPos,
+					left : leftPos
+				});
+			break;
+		case 'ViewportRelative':
+			if (topPos && leftPos)
+				resultDiv.dialog("option", {
+					position : [ leftPos, topPos ]
+				});
+			else
+				resultDiv.dialog("option", {
+					position : "center"
+				});
+			break;
+		case 'ControlRelative':
+			if (renderProps.positionAnchorId) {
+				var positionAnchor = $("#" + renderProps.positionAnchorId);
+				if (positionAnchor) {
+					leftPos = leftPos ? leftPos : 0;
+					topPos = topPos ? topPos : 0;
+					resultDiv.dialog("option", {
+						position : {
+							my : renderProps.positionAnchorMy,
+							at : renderProps.positionAnchorAt,
+							of : positionAnchor,
+							offset : leftPos + " " + topPos,
+							collision : "none"
+						}
+					});
+				}
+			}
+		}
+	}
+	resultDiv.dialog("open");
+	$('.ui-effects-wrapper').css("z-index",resultDiv.css("z-index"));
+}
+
+function closeLayer(id, realClose) {
+	if (!realClose)
+		setTimeout("closeLayer( '" + id + "', true )", 500); // recursive
+	else {
+		var resultDiv = $("#" + id);
+		$(resultDiv).dialog("close");
+	}
+}

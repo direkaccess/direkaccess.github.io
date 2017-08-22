@@ -1,0 +1,25 @@
+function TextEditField() {};
+TextEditField.activateInnerLabelHandling = function( textEditFieldId, label ) {
+    var textEditField = $('#' + textEditFieldId);
+    var label = $("<span />").append(label).text(); // converts if unicode inside
+    
+    var removeLabelOnFocus = function() {
+        var value = textEditField.attr("value");
+        if ( value == label ) {
+            textEditField.attr("value","");
+            textEditField.removeClass("Empty");
+        }
+    };
+    
+    var setLabelOnBlur = function() {
+        var value = textEditField.attr("value");
+        if ( value == "" || value == " " ) {
+            textEditField.attr("value", label );
+            textEditField.addClass("Empty");
+        }
+    };
+    
+    textEditField.bind("focus." + textEditFieldId, removeLabelOnFocus );
+    textEditField.bind("blur." + textEditFieldId, setLabelOnBlur );
+    setLabelOnBlur();
+}

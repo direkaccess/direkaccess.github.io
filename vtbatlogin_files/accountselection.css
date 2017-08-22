@@ -1,0 +1,87 @@
+.accountSelectionArea {
+  background-color: #dfe7f3;
+  width: 100%; /* before 770 px*/
+  margin-top: 10px;
+  height: 60px;
+}
+
+.accountSelectionArea .fullWidth {
+  width: 100%;
+}
+
+.accountSelectionArea .accountSelection {
+  vertical-align: top;
+  padding: 10px;
+}
+
+.accountSelectionArea .accountSelection .accountLabel {
+  font-size: 11px;
+  font-weight: bold;
+}
+
+.accountSelectionArea .accountSelection td {
+  font-weight: bold;
+}
+
+.accountSelectionArea .accountDetails {
+  padding: 8px;
+  vertical-align: top;
+  background-image: url( ../images/formErrorLeftDivider.gif );
+  background-repeat: repeat-y;
+  width: 1%;
+}
+
+/* account details for account */
+.accountSelectionArea .accountDetails .account {
+  width: 50%;
+  white-space: nowrap;
+  text-align: right;
+  font-weight: bold;
+}
+
+.accountSelectionArea .accountDetails .account .label {
+  padding-right: 5px;
+  white-space: nowrap;
+}
+
+.accountSelectionArea .accountDetails .account .value {
+  text-align: right;
+  white-space: nowrap;
+}
+
+/* account details for referencAccount */
+.accountSelectionArea .accountDetails .referencAccount {
+  width: 50%;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.accountSelectionArea .accountDetails .referencAccount .header {
+  font-weight: bold;
+  padding-right: 5px;
+
+}
+
+.accountSelectionArea .accountDetails .referencAccount .accountNumber,
+  .accountSelectionArea .accountDetails .referencAccount .actualBalance,
+  .accountSelectionArea .accountDetails .referencAccount .availableAmount {
+  padding-right: 5px;
+}
+
+.accountSelectionArea .accountSelection .bicIban {
+  font-weight: normal;
+  padding-top: 3px;
+  font-size: 11px;
+}
+
+.accountSelectionArea .accountSelection .bicIban .label {
+  font-weight: bold;
+  padding-right: 5px;
+  font-size: 11px;
+}
+
+.accountSelectionArea .accountSelection .bicIban .value {
+  font-weight: normal;
+  padding-right: 20px;
+  font-size: 11px;
+}

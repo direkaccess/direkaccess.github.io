@@ -1,0 +1,262 @@
+var focusedId = "";
+var ajaxRequestRunning=false;
+
+function AjaxEngine() {
+	//for all comments except comments in overlays
+	var globalCommentNodeCache = $(new Array());
+	// initial collect of all comment nodes
+	$(document).ready(function() {
+		globalCommentNodeCache = $(new Array());
+		addCommentsFromNode(document, globalCommentNodeCache);
+	});
+
+	// remove redundant comment nodes in cache by a given (removed) node
+	function removeCommentsFromCache(removeNode, commentNodeCache) {
+		var toRemoveComments = $(new Array());
+		addCommentsFromNode(removeNode, toRemoveComments);
+		toRemoveComments.each(function() {
+			var i = jQuery.inArray(this, commentNodeCache);
+			if (i != -1)
+				commentNodeCache.splice(i, 1);
+		});
+	}
+
+	// add new comment nodes to cache by a given (add) node
+	function addCommentsToCache(addNode, commentNodeCache) {
+		var toAddComments = $(new Array());
+		addCommentsFromNode(addNode, toAddComments);
+		$.merge(commentNodeCache, toAddComments);
+	}
+
+	// search a node by comment nodes and add them into the given array
+	function addCommentsFromNode(node, comments) {
+		if (node.nodeType == 8)
+			comments.push(node);
+		var childs = node.childNodes;
+		for ( var i = 0; i < childs.length; i++) {
+			addCommentsFromNode(childs[i], comments);
+		}
+	}
+
+	// returns comment node from cache with given value (comment ID)
+	function getCommentNodeByValue(value, commentNodeCache) {
+		for ( var i = 0; i < commentNodeCache.length; i++) {
+			if (commentNodeCache[i].nodeValue == value) {
+				return commentNodeCache[i];
+			}
+		}
+	}
+
+	function removeOldContent(destStartNode, destEndNode, siblingsAndSelf,
+			commentNodeCache) {
+		var j = siblingsAndSelf.index(destStartNode) + 1;
+		var endPosition = siblingsAndSelf.index(destEndNode);
+		while (j < endPosition) {
+			removeCommentsFromCache(siblingsAndSelf[j], commentNodeCache);
+			$(siblingsAndSelf[j]).remove();
+			j++;
+		}
+	}
+
+	function insertNewContent(destEndNode, actualResult, commentNodeCache) {
+		// insert node content
+		// put in span and get contents, cause we need comment and text nodes
+		// too.
+		actualResult = $('<span/>').html(actualResult);
+		var insertedContent = $(actualResult.contents()).insertBefore(destEndNode);
+		for ( var insertCount = 0; insertCount < insertedContent.length; insertCount++) {
+			addCommentsToCache(insertedContent[insertCount], commentNodeCache);
+		}
+	}
+
+	function replaceEntirePage(actualResult) {
+		var bodyResult = actualResult.split("</head>")[1];
+
+		bodyResult = bodyResult.split("</html>")[0];
+		$("body").html(bodyResult);
+		globalCommentNodeCache = $(new Array());
+		addCommentsFromNode(document, globalCommentNodeCache);
+	}
+
+	function replaceChangedContent(result, commentNodeCache) {
+		var ajaxMarkerMap = result.content;
+		if (result.entirePage === true) {
+			replaceEntirePage(ajaxMarkerMap);
+			return true;
+		}
+		$.each(ajaxMarkerMap, function(commentId, markerContent) {
+			var stepStartTime = getTime();
+			var destStartName = " " + commentId + " start ";
+			var destEndName = " " + commentId + " end ";
+
+			var destStartNode = getCommentNodeByValue(destStartName,
+					commentNodeCache);
+			if (destStartNode == null)
+				throw $.extend(new Error("start marker missing!"), {
+					"type" : "startMarkerNotFound",
+					"marker" : commentId
+				});
+
+			var parentOfTarget = $(destStartNode).parent();
+			var siblingsAndSelf = parentOfTarget.contents();
+			var destEndNode = getCommentNodeByValue(destEndName,
+					commentNodeCache);
+
+			// it's possible that the end marker is misplaced, cause the browser
+			// (or
+			// jQuery?) place automatically a tbody tag inside the table tag.
+			// so we must move the comment node inside tbody
+			if (siblingsAndSelf.index(destEndNode) == -1) {
+				var tbodyElement = parentOfTarget.children("tbody");
+				if (tbodyElement.length != 1)
+					throw $.extend(new Error("end marker missing!"), {
+						"type" : "endMarkerNotFound",
+						"marker" : commentId
+					});
+				else {
+					$(destStartNode).detach();
+					$(destStartNode).insertBefore(tbodyElement.contents()[0]);
+					parentOfTarget = tbodyElement;
+					siblingsAndSelf = parentOfTarget.contents();
+				}
+			}
+			var removeTime = getTime();
+			removeOldContent(destStartNode, destEndNode, siblingsAndSelf, commentNodeCache);
+			removeTime = getTime() - removeTime;
+			var insertionTime = getTime();
+			insertNewContent(destEndNode, markerContent, commentNodeCache);
+			insertionTime = getTime() - insertionTime;
+			
+			$(window).trigger({
+				type: 'ajaxReplacementStepComplete',
+				name: commentId,
+				completeTime: getTime() - stepStartTime,
+				removeTime: removeTime,
+				insertionTime: insertionTime
+			});
+		});
+	}
+
+	function evaluateResponse(resultFromAjaxRequest, textStatus, jqXHR) {
+		var jqXHRstatus = jqXHR.status;
+		if (jqXHRstatus == 200) 
+    {
+			if (resultFromAjaxRequest.length > 0) {
+				var results = new Object();
+				try {
+					results = $.parseJSON(resultFromAjaxRequest);
+				} catch (err) {
+					// response not in json format, try to display it's content
+					// as full Page
+					// replacement and wait for other errors :)
+					// may occur in case of server is not reachable (404) or
+					// something like
+					// TODO refactore for ajax commands!
+					results.command = 'ajaxReplace';
+					results.entirePage = true;
+					results.content = resultFromAjaxRequest;
+				}
+				try {
+					$.each(results.commands, function(index, result) {
+						switch (result.command) {
+						case 'redirect':
+							$(document).unbind("ajaxStop");
+							window.location = result.location;
+							break;
+						case 'download':
+							window.location = result.location;
+							break;
+						case 'ajaxReplace':
+							replaceChangedContent(result,
+									globalCommentNodeCache);
+							break;
+						case 'showAsLayer':
+							showAsLayer(result);
+							break;
+						case 'formChanged':
+							postAjax(result.target);
+							break;
+						case 'popup':
+							webcore.openPopup( result.location, result.name, result.width, result.height );
+							break;
+						default:
+							throw $.extend(new Error("unknown command received"), 
+									{"type" : "unknownCommand", "recivedCommand" : result.command});
+						}
+					});
+				} catch (err) {
+					$.get("ajaxCommandServlet", $.extend({"command" : "ajaxError"}, err), evaluateResponse, "text");
+				}
+			}
+		} 
+    else if (jqXHRstatus >= 400 && jqXHRstatus < 500)
+			alert("File not found! Error " + jqXHRstatus);
+		else if (jqXHRstatus >= 500 && jqXHRstatus < 600)
+			alert("Internal server error! Error " + jqXHRstatus);
+		else
+			alert("Error " + jqXHRstatus);
+    
+    ajaxRequestRunning=false;
+	}
+
+	function ajaxAsynchron(form, elem) {
+		var formData = form.serialize();
+
+		// append special image button attributes.
+		if (elem && elem.tagName && elem.tagName.toLowerCase() == 'input'
+				&& elem.type == 'image' && elem.name) {
+			var specialName = encodeURIComponent(elem.name);
+			formData += "&" + specialName + '.x=1';
+		}
+		// now append our magix 'ajax=true'
+		if (formData.length > 0)
+			formData += "&";
+		formData += "ajax=true";
+		$.post(form.attr("action"), formData, evaluateResponse);
+		// remove form noValidation
+		form.find("input[name=noValidation]").remove();
+		form.find("input[name=polluter]").remove();
+	}
+	// public methods
+	return {
+		ajaxAsynchron : ajaxAsynchron,
+		replaceChangedContent : replaceChangedContent,
+		addCommentsToCache : addCommentsToCache,
+		evaluateResponse : evaluateResponse
+	}
+}
+
+var ajaxEngine = new AjaxEngine();
+
+function submitAjax(elem) {
+  ajaxRequestRunning=true;
+	var form = $(elem).parents("form:first");
+	ajaxEngine.ajaxAsynchron(form, elem);
+}
+
+function postAjax(url) {
+  ajaxRequestRunning=true;
+	var ajaxCommand = "ajax=true";
+	if (url.indexOf('?') == -1)
+		ajaxCommand = '?' + ajaxCommand;
+	else
+		ajaxCommand = '&' + ajaxCommand;
+	$.post(url + ajaxCommand, ajaxEngine.evaluateResponse);
+}
+
+// show delayed "wait window" on ajax based requests
+$(document).bind("ajaxStart.wait", function() {
+	var focusedElement = $("*:focus");
+	if (focusedElement.length == 1)
+		focusedId = focusedElement.attr("id");
+	inProgressLogo.show();
+});
+
+$(document).bind("ajaxStop.wait", function() {
+	if (focusedId.length > 0) {
+		var elementToFocus = $("#" + focusedId);
+		if (elementToFocus.length == 1)
+			elementToFocus.focus();
+	}
+	inProgressLogo.hide();
+});

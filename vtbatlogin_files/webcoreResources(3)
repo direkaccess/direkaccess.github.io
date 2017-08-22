@@ -1,0 +1,822 @@
+function Picker(instanceName, renderDiv, inputField, i18nResources,
+		comboYearRange) {
+	// i18nResources = DayNames::MonthNames::CloseString::DatePattern
+	var Resources = i18nResources.split("::");
+	var DayNames = Resources[0].split(",");
+	var MonthNames = Resources[1].split(",");
+	var CloseString = Resources[2];
+	var DatePattern = Resources[3].toLowerCase();
+	// Means if you have only 2 digits in the input field, it will be
+	// interpreted as day if it's "true"
+	// Special specification for SWIFT/VTB, configured in webcore.cfg
+	var yearDigits2Day = Resources[4] ? Resources[4] : "false";
+
+	// Format pattern
+	var DateDivider;
+	var DateOrder;
+	var DayRange;
+	var MonthRange;
+	var YearRange;
+	var YearLength;
+
+	// Relationship to fields
+	this.RenderDiv = renderDiv;
+	this.InputField = inputField;
+	this.InstanceName = instanceName;
+
+	var mouseOver = false;
+
+	comboYearRange = comboYearRange ? comboYearRange.split(";") : new Array(-3,
+			3);
+
+	var aMonth;
+	var aDay;
+	var aYear;
+
+	this.bVisible = false;
+	// **************************************************** Render Picker
+	// ****************************************************
+	this.getCalendar = function(aMonatName, aAnzahlTage, aWochentag01,
+			aTagImJahr01, aFeiertageA, aFeiertageB) {
+		var strRes = "";
+		// Kalenderkopf
+		strRes += '<table class="DatePickerTable" cellspacing="0" cellpadding="0" border="0">';
+
+		strRes += '<thead class="DatePickerHead"><tr><td colspan="7">';
+
+		strRes += '<table><tr>';
+		strRes += '<td><input type="image" id="'
+				+ this.InstanceName
+				+ '_previousMonthButton" src="images/iconArrowLeft.gif" onMouseUp="'
+				+ this.InstanceName + '.prevMonth();"></td>';
+
+		// Monatswahl
+		strRes += '<td><select class="DatePickerMonthCombo FormAreaComboBox" id="'
+				+ this.InstanceName + '_monthSelect"';
+		strRes += 'onchange="' + this.InstanceName
+				+ '.setActualMonth(parseInt(this.value)+1)">';
+		for ( var i = 0; i < 12; i++) {
+			var selected = (i == aMonth - 1) ? "selected=\"selected\"" : "";
+			strRes += '<option value="' + i + '" ' + selected + '>'
+					+ MonthNames[i] + '</option>';
+		}
+		strRes += '</select></td>';
+
+		// Jahreswahl
+
+		strRes += '<td><select class="DatePickerYearCombo FormAreaComboBox" id="'
+				+ this.InstanceName + '_yearSelect"';
+		strRes += 'onchange="' + this.InstanceName
+				+ '.setActualYear(parseInt(this.value))">';
+		for ( var i = AktJahr + parseInt(comboYearRange[0]); i <= AktJahr
+				+ parseInt(comboYearRange[1]); i++) {
+			var selected = (i == aYear) ? "selected=\"selected\"" : "";
+			strRes += '<option value="' + i + '" ' + selected + '>' + i
+					+ '</option>';
+		}
+		strRes += '</select></td>';
+
+		strRes += '<td class="DatePickerButton">';
+		strRes += '<input type="image"  id="'
+				+ this.InstanceName
+				+ '_nextMonthButton" src="images/iconArrowRight.gif" onMouseUp="'
+				+ this.InstanceName + '.nextMonth()"></td>';
+
+		strRes += '</tr></table></thead>';
+
+		var iTag = 0;
+		var strTag = "";
+		var strStyleID = "Werktag";
+		var strStyleClass = "";
+
+		// Die Listen der Feiertage durchsuchen:
+		var iIndexFeiertagA = 0;
+		var arrayFeiertageA = aFeiertageA.split(";");
+		while (iIndexFeiertagA < arrayFeiertageA.length
+				&& arrayFeiertageA[iIndexFeiertagA] < aTagImJahr01)
+			iIndexFeiertagA++;
+
+		var iIndexFeiertagB = 0;
+		var arrayFeiertageB = aFeiertageB.split(";");
+		while (iIndexFeiertagB < arrayFeiertageB.length
+				&& arrayFeiertageB[iIndexFeiertagB] < aTagImJahr01)
+			iIndexFeiertagB++;
+
+		// Nummer der ersten (=Monatserster) und letzten (=Monatsultimo)
+		// darzustellenden Zelle bestimmen:
+		var i_td01 = (aWochentag01 == 0) ? 7 : aWochentag01;
+		var i_td99 = i_td01 + aAnzahlTage - 1;
+
+		// Wochenkopf
+    strRes += '<tbody class="DatePickerBody" onMouseUp="document.getElementById(\'' + this.RenderDiv + '_link\').focus()">'
+		strRes += '<tr>';
+		for ( var d_id = 0; d_id < 5; d_id++) {
+			strRes += '<td class="DatePickerDayEntry DatePickerBodyHead"><span>'
+					+ DayNames[d_id] + '</span></td>';
+		}
+
+		for ( var d_id = 5; d_id < 7; d_id++) {
+			strRes += '<td class="DatePickerDayEntry DatePickerDayEntryWeekend DatePickerBodyHead"><span>'
+					+ DayNames[d_id] + '</span></td>';
+		}
+
+		strRes += '</tr>';
+
+		// Berechnung der Gesamtzellen um die Tabelle aufzufüllen
+		var cellAmount = (aAnzahlTage + i_td01 - 1);
+		var fill = (cellAmount % 7 == 0) ? 0 : 7;
+		var cellAmountFill = cellAmount + fill - (cellAmount % 7);
+
+		// gesetztes Datum aus dem Textfeld
+		var aDate = this.getDateFromInput();
+
+		for ( var i_td = 1; i_td <= cellAmountFill; i_td++) {
+			// Beginn einer neue Zeile?
+			if (i_td % 7 == 1)
+				strRes += '<tr>';
+
+			// darzustellende Zahl:
+			if (i_td >= i_td01 && i_td <= i_td99) {
+				iTag++;
+				strTag = (iTag < 10) ? String("0" + iTag) : String(iTag);
+			} else {
+				strTag = "";
+			}
+
+			// Sonderheiten bzgl. Sonn- und Feiertage:
+			strStyleID = "Werktag";
+			strStyleClass = "DatePickerDayEntry";
+			if (i_td % 7 == 0) {
+				strStyleID = "Sonntag";
+				strStyleClass = "DatePickerDayEntry DatePickerDayEntryWeekend";
+			}
+			if (iIndexFeiertagB < arrayFeiertageB.length
+					&& aTagImJahr01 + iTag - 1 == arrayFeiertageB[iIndexFeiertagB]) {
+				strStyleID = "FeiertagB";
+				iIndexFeiertagB++;
+			}
+
+			if (iIndexFeiertagA < arrayFeiertageA.length
+					&& aTagImJahr01 + iTag - 1 == arrayFeiertageA[iIndexFeiertagA]) {
+				strStyleID = "FeiertagA";
+				iIndexFeiertagA++;
+			}
+			if (i_td % 7 == 6) {
+				strStyleClass = "DatePickerDayEntry DatePickerDayEntryWeekend";
+			}
+			if (aDate[2] == aYear && aDate[1] == aMonth && aDate[0] == iTag) {
+				strStyleID = "currentSelection";
+			}
+			if (aYear == AktJahr && aMonth == AktMonat + 1 && iTag == AktTag) {
+				strStyleID += " today";
+			}
+
+			// Darstellung:
+			if (i_td >= i_td01 && i_td <= i_td99) {
+				var strMonat = (aMonth < 10) ? String("0" + aMonth)
+						: String(aMonth);
+				strRes += '<td class="' + strStyleClass + '">';
+				strRes += '<a class="DatePickerDayEntryLink ' + strStyleID
+						+ '" href="#" id="day' + strTag + '"';
+				strRes += ' onclick="' + this.InstanceName
+						+ '.setDateAndClose(\''
+						+ this.getDateString(strTag, strMonat, aYear)
+						+ '\');return false">';
+				strRes += '<span class="DatePickerDayEntrySpan">' + strTag
+						+ '</span></a></td>';
+			} else {
+				strRes += '<td class="' + strStyleClass + '">' + strTag
+						+ '</td>'
+			}
+
+			// Ende einer Zeile?
+			if (i_td % 7 == 0)
+				strRes += '</tr>';
+		}
+
+		strRes += '</tbody>';
+		strRes += '<tfoot><tr><td class="DatePickerFoot" colspan="7">';
+		strRes += '<a class="DatePickerFootLink" href="#" onclick="'
+				+ this.InstanceName + '.hideDP();return false;">';
+		strRes += CloseString;
+		strRes += '</a></td></tr></tfoot>';
+		strRes += '</table>';
+
+		return strRes;
+	};
+
+	// ********************************************** Show & hide Picker
+	// ***************************************
+
+	this.renderDP = function() {
+		var AktMonatTagAnzahl = (IstSchaltjahr(aYear) == 1) ? MonatTagAnzahlS
+				: MonatTagAnzahl;
+		var AktWochentag = WT(aYear, aMonth, 1);
+
+		var AktJahrestag = 1;
+
+		for ( var i = 1; i < aMonth; i++) {
+			AktJahrestag += AktMonatTagAnzahl[i - 1];
+		}
+
+		var AlleFeiertage = feiertage(aYear);
+		var FeiertageAB = feiertage2ListeAB(AlleFeiertage).split("::");
+		var strRes = "";
+
+		strRes += this.getCalendar(MonthNames[aMonth - 1],
+				AktMonatTagAnzahl[aMonth - 1], AktWochentag, AktJahrestag,
+				FeiertageAB[0], FeiertageAB[1]);
+
+		$('#'+this.RenderDiv).html(strRes);
+	};
+
+	this.renderActualDP = function() {
+		var iDate = this.getDateFromInput();
+		if (iDate != null) {
+			aDay = iDate[0];
+			aMonth = iDate[1];
+			aYear = iDate[2];
+		}
+		this.renderDP();
+	};
+
+	this.hideDP = function() {
+		document.getElementById(this.RenderDiv).style.display = 'none';
+	};
+
+	this.setDateAndClose = function(date) {
+		document.getElementById(this.InputField).value = date;
+		// render actual selection for possible next view
+		this.renderActualDP();
+		this.hideDP();
+	};
+
+	this.closeIfMouseOut = function() {
+		if (!mouseOver) {
+			// formating the date
+			var dateArray = this.getDateFromInput();
+			// if the date was'nt valid, don't set
+			if (!dateArray[3]) {
+				this.hideDP();
+				return;
+			}
+			for ( var i = 0; i < dateArray.length; i++) {
+				dateArray[i] = String(dateArray[i]).length < 2 ? String("0"
+						+ dateArray[i]) : dateArray[i];
+			}
+			var dateString = this.getDateString(dateArray[0], dateArray[1],
+					dateArray[2]);
+			this.setDateAndClose(dateString);
+		}
+	};
+
+	// *********************************************************I18N**********************************************
+
+	this.setUpDateFormat = function(datePattern) {
+		defineIndexOfForArrays();
+		datePattern = String(datePattern);
+		DayRange = new Array(datePattern.indexOf("d"), datePattern
+				.lastIndexOf("d"));
+		MonthRange = new Array(datePattern.indexOf("m"), datePattern
+				.lastIndexOf("m"));
+		YearRange = new Array(datePattern.indexOf("y"), datePattern
+				.lastIndexOf("y"));
+		YearLength = YearRange[1] - YearRange[0] + 1;
+
+		var sortDateOrder = new Array(3);
+		sortDateOrder[0] = DayRange[0];
+		sortDateOrder[1] = MonthRange[0];
+		sortDateOrder[2] = YearRange[0];
+
+		sortDateOrder.sort();
+
+		DateOrder = new Array(3);
+
+		DateOrder[0] = sortDateOrder.indexOf(DayRange[0]);
+		DateOrder[1] = sortDateOrder.indexOf(MonthRange[0]);
+		DateOrder[2] = sortDateOrder.indexOf(YearRange[0]);
+
+		DateDivider = datePattern.slice(datePattern.lastIndexOf(datePattern
+				.charAt(sortDateOrder[0])) + 1, sortDateOrder[1]);
+	};
+
+	this.getDateString = function(day, month, year) {
+		var strDate = "";
+		var arrayDate = new Array(3);
+
+		if (YearLength == 2) {
+			year = year % 100;
+			year = String(year).length == 1 ? String("0" + year) : year;
+		}
+
+		arrayDate[DateOrder[0]] = day;
+		arrayDate[DateOrder[1]] = month;
+		arrayDate[DateOrder[2]] = year;
+
+		strDate += arrayDate[0] + DateDivider;
+		strDate += arrayDate[1] + DateDivider;
+		strDate += arrayDate[2];
+
+		return strDate;
+	};
+
+	this.getDateFromInput = function() {
+		// the last entry in returnDate indicates, whether the input was valid
+		// or not
+		var returnDate = new Array(4);
+		returnDate[3] = true;
+		if (document.getElementById(this.InputField)!=null)
+			var iDate = document.getElementById(this.InputField).value;
+		else
+			return null;
+		var tmpDay = parseInt(iDate.slice(DayRange[0], DayRange[1] + 1), 10);
+		var tmpMonth = parseInt(iDate.slice(MonthRange[0], MonthRange[1] + 1),
+				10);
+		var tmpYear = parseInt(iDate.slice(YearRange[0], YearRange[1] + 1), 10);
+
+		// special SWIFT pattern -> if only 2 or 1 letters given, use it as Day
+		// globalized configuration in webcore.cfg
+		if (yearDigits2Day == "true"
+				&& (iDate.length == 1 || iDate.length == 2)) {
+			tmpDay = iDate;
+			tmpMonth = AktMonat + 1;
+			tmpYear = AktJahr;
+		}
+		// Gültiges Jahr
+		if (YearLength == 2) {
+			returnDate[2] = (tmpYear % 100) + AktJahr - (AktJahr % 100);
+		} else if (YearLength == 4)
+			returnDate[2] = tmpYear;
+		else {
+			returnDate[2] = AktJahr;
+			returnDate[3] = false;
+		}
+		// is the date not in range of pickable dates?
+		if (returnDate[2] - AktJahr < comboYearRange[0]
+				|| returnDate[2] - AktJahr > comboYearRange[1]
+				|| !returnDate[2] > 0) {
+			returnDate[2] = AktJahr;
+			returnDate[3] = false;
+		}
+
+		// Gültiger Monat
+		if (tmpMonth > 0 && tmpMonth <= 12) {
+			returnDate[1] = tmpMonth
+		} else {
+			returnDate[1] = AktMonat + 1;
+			returnDate[3] = false;
+		}
+
+		// Gültiger Tag im Monat
+		var AktMonatTagAnzahl = (IstSchaltjahr(returnDate[2]) == 1) ? MonatTagAnzahlS
+				: MonatTagAnzahl;
+		if (tmpDay >= 0 && tmpDay <= AktMonatTagAnzahl[returnDate[1] - 1])
+			returnDate[0] = tmpDay;
+		else {
+			returnDate[0] = AktTag;
+			returnDate[3] = false;
+		}
+
+		return returnDate;
+	};
+
+	this.setUpDateFormat(DatePattern);
+	// ********************************************************************************************************
+	this.keyDown = function(event) {
+		event = event || window.event;
+		if (event.keyCode == 13)
+			this.closeIfMouseOut();
+	};
+
+	this.setMouseOver = function(over) {
+		mouseOver = over;
+	};
+
+	this.nextMonth = function() {
+		if (aMonth == 12) {
+			if (parseInt(comboYearRange[1]) + AktJahr > aYear) {
+				aYear++;
+				aMonth = 1;
+			}
+		} else
+			aMonth++;
+		this.renderDP();
+	};
+
+	this.prevMonth = function() {
+		if (aMonth == 1) {
+			if (parseInt(comboYearRange[0]) + AktJahr < aYear) {
+				aYear--;
+				aMonth = 12;
+			}
+		} else
+			aMonth--;
+		this.renderDP();
+	};
+
+	this.setActualMonth = function(month) {
+		aMonth = month;
+		this.renderDP();
+	};
+
+	this.setActualYear = function(year) {
+		aYear = year;
+		this.renderDP();
+	}
+}
+/** ************************************************Grundberechnungen****************************** */
+// GLOBAL
+var AktZeit = new Date();
+var AktJahr = AktZeit.getYear() < 1000 ? AktZeit.getYear() + 1900 : AktZeit
+		.getYear();
+var AktMonat = AktZeit.getMonth();
+var AktTag = AktZeit.getDate();
+// ---------------------------------------------------------------------------
+// Sammlung an Konstanten
+// ---------------------------------------------------------------------------
+var MonatName = new Array("Januar", "Februar", "M&auml;rz", "April", "Mai",
+		"Juni", "Juli", "August", "September", "Oktober", "November",
+		"Dezember");
+var MonatTagAnzahl = new Array(31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+var MonatTagAnzahlS = new Array(31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
+var MonatTagBeginn = new Array(0, 31, 59, 90, 120, 151, 181, 212, 243, 273,
+		304, 334);
+var MonatTagBeginnS = new Array(0, 31, 60, 91, 121, 152, 182, 213, 244, 274,
+		305, 335);
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: JDjulius(aJahr, aMonat, aTag)
+// Bestimmung julianisches Datum zu einem Datum des Julianischen Kalenders
+// ---------------------------------------------------------------------------
+function JDjulius(aJahr, aMonat, aTag) {
+	var J = aJahr;
+	var M = aMonat;
+
+	// negative Jahreszahlen um 1 erhoehen (nachruecken), denn
+	// das Jahr 0 gibt es nicht (Luecke fuellen):
+	if (J < 0) {
+		J += 1;
+	}
+
+	// Die ersten beiden Monate (vor dem Schalttag) an das Ende
+	// des Jahres verschieben (Monate 13 und 14 des Vorjahres):
+	if (M < 3) {
+		J -= 1;
+		M += 12;
+	}
+
+	// Berechnung:
+	var n1 = Math.floor((J + 4800) / 100);
+	var n2 = (J + 4800) % 100;
+
+  return 36525 * n1 + 1461 * Math.floor( n2 / 4 ) + 365 * (n2 % 4)
+           + Math.floor( (7 * (M - 2)) / 12 ) + 30 * M + aTag - 32173;
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: JDgregor(aJahr, aMonat, aTag)
+// Bestimmung julianisches Datum zu einem Datum des Gregorianischen Kalenders
+// ---------------------------------------------------------------------------
+function JDgregor(aJahr, aMonat, aTag) {
+	var J = aJahr;
+	var M = aMonat;
+
+	// negative Jahreszahlen um 1 erhoehen (nachruecken), denn
+	// das Jahr 0 gibt es nicht (Luecke fuellen):
+	if (J < 0) {
+		J += 1;
+	}
+
+	// Die ersten beiden Monate (vor dem Schalttag) an das Ende
+	// des Jahres verschieben (Monate 13 und 14 des Vorjahres):
+	if (M < 3) {
+		J -= 1;
+		M += 12;
+	}
+
+	// Berechnung:
+	var n1 = Math.floor((J + 4800) / 100);
+	var n2 = (J + 4800) % 100;
+
+  return 146097 * Math.floor( n1 / 4 ) + 36524 * (n1 % 4) + 1461
+    * Math.floor( n2 / 4 ) + 365 * (n2 % 4)
+           + Math.floor( (7 * (M - 2)) / 12 ) + 30 * M + aTag - 32135;
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: JD(aJahr, aMonat, aTag)
+// Bestimmung des julianischen Datums zu einem gegebenen Datum
+// ---------------------------------------------------------------------------
+function JD(aJahr, aMonat, aTag) {
+	// return JDjulius(aJahr, aMonat, aTag);
+	return JDgregor(aJahr, aMonat, aTag);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: KDjulius(aJD)
+// Bestimmung eines Datums im Julianischen Kalenders zu julianischem Datum
+// ---------------------------------------------------------------------------
+function KDjulius(aJD) {
+	var n1 = aJD + 32082;
+	var n2 = Math.floor(n1 / 1461);
+	var n3 = n1 % 1461;
+	var n4 = Math.floor(n3 / 365);
+	if (n4 > 3)
+		n4 = 3;
+	var n5 = n3 - 365 * n4;
+	var n6 = Math.floor((111 * n5 + 41) / 3395);
+
+	var J = 4 * n2 + n4 - 4800;
+	var M = n6 + 3;
+
+	var resJahr = J + Math.floor(M / 13);
+	var resMonat = ((M + 11) % 12) + 1;
+	var resTag = n5 - 30 * n6 - Math.floor((7 * (n6 + 1)) / 12) + 1;
+
+	if (resJahr <= 0)
+		resJahr -= 1;
+	return String(resJahr) + "-" + String(resMonat) + "-" + String(resTag);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: KDgregor(aJD)
+// Bestimmung eines Datums im Gregorianischen Kalenders zu julianischem Datum
+// ---------------------------------------------------------------------------
+function KDgregor(aJD) {
+	var n1 = aJD + 32044;
+	var n2 = Math.floor(n1 / 146097);
+	var n3 = n1 % 146097;
+	var n4 = Math.floor(n3 / 36524);
+	if (n4 > 3)
+		n4 = 3;
+	var n5 = n3 - 36524 * n4;
+	var n6 = Math.floor(n5 / 1461);
+	var n7 = n5 % 1461;
+	var n8 = Math.floor(n7 / 365);
+	if (n8 > 3)
+		n8 = 3;
+	var n9 = n7 - 365 * n8;
+	var n10 = Math.floor((111 * n9 + 41) / 3395);
+
+	var J = 400 * n2 + 100 * n4 + 4 * n6 + n8 - 4800;
+	var M = n10 + 3;
+
+	var resJahr = J + Math.floor(M / 13);
+	var resMonat = ((M + 11) % 12) + 1;
+	var resTag = n9 - 30 * n10 - Math.floor((7 * (n10 + 1)) / 12) + 1;
+
+	if (resJahr <= 0)
+		resJahr -= 1;
+	return String(resJahr) + "-" + String(resMonat) + "-" + String(resTag);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: KD(aJD)
+// Bestimmung eines Datums zu julianischem Datum
+// ---------------------------------------------------------------------------
+function KD(aJD) {
+	// return KDjulius(aJD);
+	return KDgregor(aJD);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: WTjulius(aJahr, aMonat, aTag)
+// Wochentagbestimmung eines Datums im Julianischen Kalender
+// ---------------------------------------------------------------------------
+function WTjulius(aJahr, aMonat, aTag) {
+	return (JDjulius(aJahr, aMonat, aTag) + 1) % 7;
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: WTgregor(aJahr, aMonat, aTag)
+// Wochentagbestimmung eines Datums im Gregorianischen Kalender
+// ---------------------------------------------------------------------------
+function WTgregor(aJahr, aMonat, aTag) {
+	return (JDgregor(aJahr, aMonat, aTag) + 1) % 7;
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: WT(aJahr, aMonat, aTag)
+// Wochentagbestimmung eines Datums
+// ---------------------------------------------------------------------------
+function WT(aJahr, aMonat, aTag) {
+	if (10000 * aJahr + 100 * aMonat + aTag < 15821015)
+		return WTjulius(aJahr, aMonat, aTag);
+	else
+		return WTgregor(aJahr, aMonat, aTag);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: IstSchaltjahr(aJahr)
+// Bestimmung, ob es sich um ein Schaltjahr handelt (1) oder nicht (0)
+// ---------------------------------------------------------------------------
+function IstSchaltjahr(aJahr) {
+	return (aJahr % 4 == 0 && (aJahr % 100 != 0 || aJahr % 400 == 0 || aJahr < 1582)) ? 1
+			: 0;
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: Datum2TagImJahr(aDatum)
+// Bestimmung der Tageszahl (Numerierung ab 01.01.) eines Jahres
+// ---------------------------------------------------------------------------
+function Datum2TagImJahr(aDatum) {
+	var tmpDatum = aDatum.split("-");
+
+	var tmpJahr = parseInt(tmpDatum[0], 10);
+	var tmpMonat = parseInt(tmpDatum[1], 10);
+	var tmpTag = parseInt(tmpDatum[2], 10);
+
+	var tmpMonatTagBeginn = (IstSchaltjahr(tmpJahr) == 1) ? MonatTagBeginnS
+			: MonatTagBeginn;
+
+	return tmpMonatTagBeginn[tmpMonat - 1] + tmpTag;
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: TagImJahr2Datum(aTagImJahr, aJahr)
+// Bestimmung eines Datum zu einer Tageszahl (Numerierung ab 01.01.)
+// ---------------------------------------------------------------------------
+function TagImJahr2Datum(aTagImJahr, aJahr) {
+	var tmpMonat = 0;
+	var tmpTag = aTagImJahr;
+
+	var tmpMonatTagAnzahl = (IstSchaltjahr(aJahr) == 1) ? MonatTagAnzahlS: MonatTagAnzahl;
+
+	while (tmpTag > tmpMonatTagAnzahl[tmpMonat]) {
+		tmpTag -= tmpMonatTagAnzahl[tmpMonat];
+		tmpMonat += 1;
+	}
+
+	return String(aJahr) + "-" + String(tmpMonat + 1) + "-" + String(tmpTag);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: getOsterSonntag(aJahr)
+// Ermittlung des Bezugsdatums "Ostersonntag"
+// ---------------------------------------------------------------------------
+function getOsterSonntag(aJahr) {
+	var m = 0;
+	var n = 0;
+
+	if (aJahr <= 1582) {
+		// julianischer Kalender:
+		m = 15;
+		n = 6;
+	} else {
+		// gregorianischer Kalender:
+		var jh = Math.floor(aJahr / 100);
+		m = 10 + jh - Math.floor(jh / 4)
+				- Math.floor((jh - 14 - Math.floor((jh + 8) / 25)) / 3);
+		n = (4 + jh - Math.floor(jh / 4)) % 7;
+	}
+
+	var a = aJahr % 19;
+	var b = aJahr % 4;
+	var c = aJahr % 7;
+	var d = (m + 19 * a) % 30;
+	var e = (n + 2 * b + 4 * c + 6 * d) % 7;
+
+	var resMonat = 0;
+	var resTag = 0;
+
+	if ((d + e) > 9) {
+		resMonat = 4;
+		resTag = d + e - 9;
+	} else {
+		resMonat = 3;
+		resTag = d + e + 22;
+	}
+
+	// Ausnahmen
+	if (resMonat == 4 && resTag == 26)
+		resTag = 19;
+	if (resMonat == 4 && resTag == 25 && d == 28 && a > 10)
+		resTag = 18;
+
+	return String(aJahr) + "-" + String(resMonat) + "-" + String(resTag);
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: LetzterSonntag(aJahr)
+// Ermittlung des Bezugsdatums "Letzter Sonntag im Kirchenjahr"
+// ---------------------------------------------------------------------------
+function getLetzterSonntag(aJahr) {
+	// 4. Advend (= Sonntag vor 24.12. oder 24.12.) - 28 Tage
+	// = 26.11. - Wochentag(24.12.):
+	return String(aJahr) + "-" + "11" + "-" + String(26 - WT(aJahr, 12, 24));
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: feiertage(aJahr)
+// Ermittlung aller Feiertage eines Jahres
+// ---------------------------------------------------------------------------
+function feiertage(aJahr) {
+	var schaltjahr = IstSchaltjahr(aJahr);
+
+	var strOsterSonntag = getOsterSonntag(aJahr);
+	var strLetzterSonntag = getLetzterSonntag(aJahr);
+
+	var intOsterSonntag = Datum2TagImJahr(strOsterSonntag);
+	var intLetzterSonntag = Datum2TagImJahr(strLetzterSonntag);
+
+	var arrayAlleFeiertage = new Array();
+
+	arrayAlleFeiertage[0] = String(1) + ":A:" + TagImJahr2Datum(1, aJahr);
+	arrayAlleFeiertage[1] = String(6) + ":B:" + TagImJahr2Datum(6, aJahr);
+	arrayAlleFeiertage[2] = String(intOsterSonntag - 2) + ":A:"
+			+ TagImJahr2Datum(intOsterSonntag - 2, aJahr);
+	arrayAlleFeiertage[3] = String(intOsterSonntag) + ":A:"
+			+ TagImJahr2Datum(intOsterSonntag, aJahr);
+	arrayAlleFeiertage[4] = String(intOsterSonntag + 1) + ":A:"
+			+ TagImJahr2Datum(intOsterSonntag + 1, aJahr);
+	arrayAlleFeiertage[5] = String(121 + schaltjahr) + ":A:"
+			+ TagImJahr2Datum(121 + schaltjahr, aJahr);
+	arrayAlleFeiertage[6] = String(intOsterSonntag + 39) + ":A:"
+			+ TagImJahr2Datum(intOsterSonntag + 39, aJahr);
+	arrayAlleFeiertage[7] = String(intOsterSonntag + 49) + ":A:"
+			+ TagImJahr2Datum(intOsterSonntag + 49, aJahr);
+	arrayAlleFeiertage[8] = String(intOsterSonntag + 50) + ":A:"
+			+ TagImJahr2Datum(intOsterSonntag + 50, aJahr);
+	arrayAlleFeiertage[9] = String(intOsterSonntag + 60) + ":B:"
+			+ TagImJahr2Datum(intOsterSonntag + 60, aJahr);
+	arrayAlleFeiertage[10] = String(227 + schaltjahr) + ":B:"
+			+ TagImJahr2Datum(196 + schaltjahr, aJahr);
+	arrayAlleFeiertage[11] = String(276 + schaltjahr) + ":A:"
+			+ TagImJahr2Datum(276 + schaltjahr, aJahr);
+	arrayAlleFeiertage[12] = String(304 + schaltjahr) + ":B:"
+			+ TagImJahr2Datum(304 + schaltjahr, aJahr);
+	arrayAlleFeiertage[13] = String(305 + schaltjahr) + ":B:"
+			+ TagImJahr2Datum(305 + schaltjahr, aJahr);
+	arrayAlleFeiertage[14] = String(intLetzterSonntag - 4) + ":B:"
+			+ TagImJahr2Datum(intLetzterSonntag - 4, aJahr);
+	arrayAlleFeiertage[15] = String(359 + schaltjahr) + ":A:"
+			+ TagImJahr2Datum(359 + schaltjahr, aJahr);
+	arrayAlleFeiertage[16] = String(360 + schaltjahr) + ":A:"
+			+ TagImJahr2Datum(360 + schaltjahr, aJahr);
+
+	// Eigentlich sind diese Feiertage bereits richtig sortiert. Sehr selten
+	// kann es aber
+	// durch variable Feiertage zu Abweichungen kommen (z.B. 1.Mai = Christi
+	// Himmelfahrt).
+	// Also einfach das Array sortieren ("best case" liegt vor -> bubble sort):
+	do {
+		var bGetauscht = false;
+		for ( var i = 0; i < arrayAlleFeiertage.length - 1; i++) {
+			var tmp_vorgaenger = arrayAlleFeiertage[i].split(":");
+			var tmp_nachfolger = arrayAlleFeiertage[i + 1].split(":");
+
+			if (parseInt(tmp_vorgaenger[0]) > parseInt(tmp_nachfolger[0])
+					|| parseInt(tmp_vorgaenger[0]) == parseInt(tmp_nachfolger[0])
+					&& tmp_vorgaenger[1] > tmp_nachfolger[1]) {
+				bGetauscht = true;
+				var tmp_tausch = arrayAlleFeiertage[i];
+				arrayAlleFeiertage[i] = arrayAlleFeiertage[i + 1];
+				arrayAlleFeiertage[i + 1] = tmp_tausch;
+			}
+		}
+	} while (bGetauscht);
+
+	return arrayAlleFeiertage.join(";");
+}
+// ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// function: feiertage2ListeAB
+// Zusammenstellung aller Feiertage nach den Einteilungen A (alle Laender)
+// und B (Bundeslaender abhaengig)
+// ---------------------------------------------------------------------------
+function feiertage2ListeAB(aAlleFeiertage) {
+	var resListeA = "";
+	var resListeB = "";
+
+	var arrayAlleFeiertage = aAlleFeiertage.split(";");
+	var tmpTag = 0;
+
+	for ( var i = 0; i < arrayAlleFeiertage.length; i++) {
+		var tmp_feiertag = arrayAlleFeiertage[i].split(":");
+		if (tmpTag != tmp_feiertag[0]) {
+			tmpTag = tmp_feiertag[0];
+			if (tmp_feiertag[1] == 'A')
+				resListeA += ((resListeA != "") ? ";" : "") + String(tmpTag);
+			else
+				resListeB += ((resListeB != "") ? ";" : "") + String(tmpTag);
+		}
+	}
+
+	return resListeA + "::" + resListeB;
+}

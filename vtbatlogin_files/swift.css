@@ -1,0 +1,373 @@
+/********************************************************
+ * css classes for visual swift configuration (TAGs)
+ ********************************************************/
+
+ /*only to have a selektor to set css-classes for otional fields*/
+.SwiftSelektorClass {}
+ 
+.SwiftSelektorClass .FormAreaEditableComboBox {
+  background-color: #ffffff;
+  border: 1px solid #999999;
+}
+
+.SwiftSelektorClass .FormAreaEditableComboboxDropDownImage {
+  background-image: url(../images/iconArrowDownOptional.gif);
+  background-position: center center;
+  border-left: 1px solid #999999;
+  width: 17px;
+  height: 17px;
+}
+
+.SwiftSelektorClass .FormAreaComboBox {
+  background-color: #ffffff;
+  border: 1px solid #999999;
+}
+
+.SwiftSelektorClass .FormAreaFileInputField {
+  background-color: #ffffff;
+  border: 1px solid #999999;
+}
+
+.SwiftSelektorClass .FormAreaMemoInputField {
+  background-color: #ffffff;
+	border: 1px solid #999999;
+}
+
+.SwiftSelektorClass .FormAreaTextInputField {
+  background-color: #ffffff;
+  border: 1px solid #999999;
+}
+
+.SwiftSelektorClass .SwiftTagInputFieldMandatory
+{
+  border: 1px solid #3f68a3;
+}
+
+.SwiftSelektorClass .SwiftTagInputFieldMandatory .FormAreaEditableComboboxDropDownImage {
+  background-image: url(../images/iconArrowDown.gif);
+  background-position: center center;
+  border-left: 1px solid #3f68a3;
+  width: 17px;
+  height: 17px;
+}
+
+/* Mark mandatory input fields.
+.SwiftTagInputFieldMandatory
+{
+  border: 1px solid #3f68a3;
+}
+*/ 
+
+/* Separator between tags. */
+.SwiftTagSeparator
+{
+  height: 1px;
+  background-color: #dddddd;
+}
+
+.RepetitiveSequenceSwiftTagSeparator
+{
+  height: 1px;
+  background-color: #ffffff;
+}
+ 
+/* The container surounds the whole tag. */
+.SwiftTagContainer
+{
+  padding-top: 5px;
+  
+  min-height: 29px;
+}
+
+/* Even-odd-style for different background colors. */
+.SwiftBlockEven
+{
+  background-color: #ffffff;
+}
+
+/* Even-odd-style for different background colors. */
+.SwiftBlockOdd
+{
+  background-color: #ffffff;
+}
+
+/* Even-odd-style for different background colors in repetitive sequences. */
+.SwiftRepetitiveSequenceBlockEven
+{
+  background-color: #dfe7f3;
+}
+
+/* Even-odd-style for different background colors in repetitive sequences. */
+.SwiftRepetitiveSequenceBlockOdd
+{
+  background-color: #dfe7f3;
+}
+
+/* The single line in the tag. */
+.SwiftTagLine
+{
+}
+
+/* The column for the visibility switch. */
+.SwiftTagVisibilitySwitch
+{
+  width: 15px;
+  
+  vertical-align: top;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* Workaround (Firefox) for the visibility switch image. */
+.SwiftTagVisibilitySwitchIcon
+{
+  width: 9px;
+  height: 9px;
+}
+
+/* The column for the caption. */
+.SwiftTagCaption
+{
+  width: 170px;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+  font-size: 11px;
+  font-weight: bold;
+}
+
+/* The column for the caption of input fields. */
+.SwiftTagCaptionInputField
+{
+  width: 150px;
+  padding-left: 20px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+  font-size: 11px;
+}
+
+/* The column for the status. */
+.SwiftTagStatus
+{
+  width: 15px;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+}
+
+/* The column for the id and option. */
+.SwiftTagIdWithOption
+{
+  width: 80px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+}
+
+/* The column for the id and option. */
+.SwiftTagIdWithOptionCombobox
+{
+  padding-left: 5px;
+}
+
+/* The column for the id without option. */
+.SwiftTagIdWithoutOption
+{
+  width: 80px;
+  padding-top: 3px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+}
+
+/* The column for the input fields. */
+.SwiftTagInputField
+{
+  width: 285px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+}
+
+/* Mark input fields with error. */
+.SwiftSelektorClass .SwiftTagInputFieldError
+{
+  border: 1px solid #ff0000;
+}
+
+/* Mark input fields with warning. */
+.SwiftSelektorClass .SwiftTagInputFieldWarning
+{
+  border: 1px solid #ff8900;
+}
+
+/* The box with format hints for input fields. */
+.SwiftTagInputFieldFormatHint
+{
+  padding: 2px;
+  background-color: #dfe7f3;
+  border: 1px solid #ededed;
+}
+
+/* The box with input informations for input fields (e.g. comboboxes with codes). */
+.SwiftTagInputFieldInformationBox
+{
+  width: 300px;
+  padding: 5px;
+  background-color: #dfe7f3;
+  border: 1px solid #ededed;
+}
+
+/* The column for the validation errors. */
+.SwiftTagValidationError
+{
+  width: 120px;
+  padding-top: 2px;
+  padding-bottom: 5px;
+  
+  vertical-align: top;
+}
+
+/* Additional attributes when tag is in mode 'hidden' */
+.SwiftTagHidden
+{
+}
+
+/* Label for show currency description */
+.SwiftTagCurrencyCombobox
+{
+  font-size: 11px;
+  font-weight: bold;
+}
+
+
+/********************************************************
+ * css classes for visual swift configuration (FORMs)
+ ********************************************************/
+
+/* Header area of swift messages. */
+.SwiftHeaderArea
+{
+  border: none;
+}
+
+/* Always visible part of the header area. */
+.SwiftHeaderAreaHead
+{
+  background-color: #dfe7f3;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* Icon area to show / hide the header area body. */
+.SwiftHeaderAreaHeadIcon
+{
+  padding: 3px;
+}
+
+/* Headline for the header area. */
+.SwiftHeaderAreaHeadCaption
+{
+  padding-left: 3px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Input field area of the header. */
+.SwiftHeaderAreaBody
+{
+  border-top: none;
+  background-color: #dfe7f3;
+}
+
+/* Labels for input fields in the header area- */
+.SwiftHeaderAreaBodyLabel
+{
+  padding-left: 15px;
+  width: 210px;
+}
+
+/* Single input field area in the header. */
+.SwiftHeaderAreaBodyInputField
+{
+  padding-left: 65px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  
+  width: 250px;
+}
+
+/* Repetitive sequences in swift messages. */
+.RepetitiveSequence
+{
+  border: none;
+}
+
+/* Header area of repetitive sequences. */
+.RepetitiveSequenceHeaderArea
+{
+  background-color: #dfe7f3;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* Title in header area of repetitive sequences. */
+.RepetitiveSequenceHeaderTitle
+{
+  padding-left: 3px;
+  width: 275px;
+  
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Icon to add new occurrrences in header area of repetitive sequences. */
+.RepetitiveSequenceHeaderButton
+{
+  width: 168px;
+  text-align: right;
+}
+
+/* Informations in header area of repetitive sequences. */
+.RepetitiveSequenceHeaderInfo
+{
+  width: 75px;
+  text-align: left;
+}
+
+/* Header area of a single occurrence in repetitive sequences. */
+.RepetitiveSequenceOccurrenceHeaderArea
+{
+  border-top: none;
+  background-color: #ffffff;
+  padding-top: 3px;
+  padding-bottom: 3px;
+}
+
+/* Title (in header area) of a single occurrence in repetitive sequences. */
+.RepetitiveSequenceOccurrenceHeaderTitle
+{
+  width: 470px;
+  padding-left: 9px;
+  padding-right: 15px;
+  font-size: 12px;
+  font-weight: bold;
+}
+
+/* Delete button of a single occurrence in repetitive sequences. */
+.RepetitiveSequenceOccurrenceHeaderButton
+{
+  width: 177px;
+  text-align: right;
+}
+
+/* Body with input fields for a single occurrence in repetitive sequences. */
+.RepetitiveSequenceOccurrenceArea
+{
+  background-color: #dfe7f3;
+  border: 1px solid #ffffff;
+}
+

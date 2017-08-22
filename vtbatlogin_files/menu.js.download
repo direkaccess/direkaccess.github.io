@@ -1,0 +1,68 @@
+var openMenuItemId = null;
+
+function setOpenMenuItemId( id )
+{
+    openMenuItemId = id;
+}
+
+function setMenuJs( itemId )
+{
+    var elem = document.getElementById("top" + itemId);
+    elem.onmouseover = function() { elem.className = 'MenuItemFirstLevelAreaMouseOver'; };
+    elem.onmouseout = function() {elem.className = 'MenuItemFirstLevelArea'; };
+}
+
+function onTopMenuItemClick( itemId )
+{
+    var container = $("#" + itemId);
+    var openStateClass = "MenuItemOpen";
+
+    if ( container.hasClass(openStateClass) )
+    {
+        var t = document.getElementById("top" + itemId);
+        t.className = 'MenuItemFirstLevelAreaMouseOver';
+
+        container.slideUp("slow", function ()
+        {
+            t.onmouseover = function() { this.className = 'MenuItemFirstLevelAreaMouseOver'; };
+            t.onmouseout = function() {this.className = 'MenuItemFirstLevelArea'; };
+            container.removeClass(openStateClass);
+        });
+        setOpenMenuItemId(null);
+    }
+    else
+    {
+        if ( openMenuItemId )
+        {
+            var tlc = $("#top" + openMenuItemId);
+            tlc.removeClass("MenuItemFirstLevelAreaSelected");
+            tlc.addClass("MenuItemFirstLevelArea");
+
+            var toClose = document.getElementById("top" + openMenuItemId);
+            toClose.onmouseover = function() { this.className = 'MenuItemFirstLevelAreaMouseOver'; };
+            toClose.onmouseout = function() { this.className = 'MenuItemFirstLevelArea'; };
+
+            c = $("#" + openMenuItemId);
+            c.slideUp("slow", function ()
+            {
+                c.removeClass(openStateClass);
+                toClose.className = 'MenuItemFirstLevelArea';
+            });
+        }
+
+        var tlc = $("#top"+ itemId);
+        tlc.removeClass("MenuItemFirstLevelArea");
+        tlc.addClass("MenuItemFirstLevelAreaSelected");
+
+        var toOpen = document.getElementById("top" + itemId);
+        toOpen.onmouseover = function() { this.className = 'MenuItemFirstLevelAreaSelected'; };
+        toOpen.onmouseout = function() {this.className = 'MenuItemFirstLevelAreaSelected'; };
+        toOpen.className = 'MenuItemFirstLevelAreaSelected';
+        container.slideDown("slow", function ()
+        {
+            container.addClass(openStateClass);
+        });
+
+        setOpenMenuItemId(itemId);
+    }
+}
