@@ -1,0 +1,412 @@
+/*
+ * COPYRIGHT (C) 2013 Fidelity Information Services KORDOBA GmbH
+ * CC_VERSION(key.handler 18.10.2013 ze00-00002)
+ * 
+* Disable "Enter" key in Form script- By Nurul Fadilah(nurul@REMOVETHISvolmedia.com)
+* This notice must stay intact for use
+* Visit http://www.dynamicdrive.com/ for full source code
+**********************************************
+ * 
+ * @A-Aenderungsnachweis
+ * 
+ * 18.10.2013, ze00-00002
+ * Assyst R64490
+ * 
+ * @E-Aenderungsnachweis
+ * 
+ */
+
+
+function repairInfo(data) {if (data.status == "success"){fisk_popover.init();}}
+function hideInfoPopup() {$("[data-toggle='popover']").each(function(){$(this).popover("hide")})}
+if(typeof window.orientation === 'undefined') {var actOrientation = window.matchMedia("(orientation: portrait)");actOrientation.addListener(function() {hideInfoPopup();});} else {window.addEventListener('orientationchange', hideInfoPopup);}
+window.addEventListener('resize', hideInfoPopup);
+if (typeof jsf != "undefined") {$(document).ready(jsf.ajax.addOnEvent(repairInfo));}
+
+function handleEnter (field, event) {
+		var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+		if (keyCode == 13) {
+			var i;
+			for (i = 0; i < field.form.elements.length; i++)
+				if (field == field.form.elements[i])
+					break;
+			i = (i + 1) % field.form.elements.length;
+			field.form.elements[i].focus();
+			return false;
+		}
+		else
+		return true;
+	}
+
+var checkIbanFocus = null;
+var nextFocusField = null;
+
+function findNextFocus()
+{
+	var fieldFocus = 'nextFocus';
+	var idArray;
+	for (var i = 0; i < document.forms.length; i++) {
+		var frm = document.forms[i] ;
+		var len = frm.elements.length ;
+		for ( var j=0; j < len; j++) {
+			idArray = frm.elements[j].id.split(":"); 
+			if( idArray[idArray.length-1] == fieldFocus ) {
+				nextFocusField = frm.elements[j];
+				nextFocus(false);
+			}
+		}
+	}
+}
+
+function nextFocus(clearTimer)
+{
+	var v = nextFocusField.value;
+	//if( ! clearTimer ) {
+		//console.log( "nextFocusField: " + nextFocusField.id + " '" + v + "'" );
+//	}
+	if( v.length > 0 ) {
+		var idArray;
+		for (var i = 0; i < nextFocusField.form.elements.length; i++) {
+			idArray = nextFocusField.form.elements[i].id.split(":");
+			//console.log( "nextFocusField: " + nextFocusField.id + " '" + v + "' " + idArray[idArray.length-1] );
+			if( idArray[idArray.length-1] == v ) {
+				nextFocusField.form.elements[i].focus();
+				nextFocusField.value = '';
+				if( clearTimer) {
+					clearInterval(checkIbanFocus);
+					checkIbanFocus = null;
+				}
+				break;
+			}
+		}
+	}
+}
+
+function handleTabEnterFocus(field, event, fieldFocus )
+{
+	var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+	if( handleEnter(field,event) == false )
+		return false;
+
+	if (keyCode == 9) {
+		var i;
+		var idArray;
+		for (i = 0; i < field.form.elements.length; i++) {
+			idArray = field.form.elements[i].id.split(":");
+			if( idArray[idArray.length-1] == fieldFocus ) {
+				nextFocusField = field.form.elements[i];
+				nextFocusField.value = '';
+				checkIbanFocus = setInterval(function () {
+					nextFocus(true);
+				}, 100);
+				break;
+			}
+		}
+	}
+	return true;
+}
+
+function ignoreEnter (field, event, forward)
+{
+	var keyCode = event.keyCode ? event.keyCode : event.which ? event.which : event.charCode;
+	if (keyCode == 13)
+		return false;
+	else
+		return true;
+}
+
+function endsWith(str, s) {
+	return (str.length >= s.length && str.substr(str.length - s.length) == s);
+}
+
+function getElementFormById( id )
+{
+	var element = document.getElementById(id);
+	if( element != null )
+		return element;
+	
+	var args = id.split(":");
+	var formName = args[0];
+	if( args.length == 1 )
+		formName = 'contentForm';
+	
+	var i = 0;
+	var endId = args[args.length-1];
+	 var elements = document.forms[formName].elements;
+	  for (; i<elements.length; i++){
+		if( endsWith(elements[i].name,endId) ) {
+			element = document.getElementById(elements[i].name);
+			return element;
+		}
+	  }
+	  
+	return element;
+}
+
+function ajaxRender(id, value, event, toRender ) {
+	jsf.ajax.request(setElementValue(id, value), event, {render : toRender } );
+}
+
+function ajaxRender(element, event, toRender ) {
+	jsf.ajax.request(element, event, {render : toRender } );
+}
+
+function setContentElementValue(id, v) {
+	return setElementValue('contentForm:'+id,v);
+}
+
+function setElementValue(id, v) {
+	var element = getElementFormById(id);
+	if( element == null ) {
+		console.log( "Element not found " + id );
+		return element;
+	}
+	
+	element.value = v;
+	return element;
+}
+
+function setElementHTML(id, v) {
+	var element = getElementFormById(id);
+	if( element == null ) {
+		console.log( "Element not found " + id );
+		return false;
+	}
+	
+	element.innerHTML = v;
+	return true;
+}
+
+function copyElementVV(src, dst) {
+	var element = getElementFormById(src);
+	if( element == null ) {
+		console.log( "SRC Element not found " + src );
+		return false;
+	}
+	
+	return setElementValue( dst, element.value );
+}
+
+function copyElementHV(src, dst) {
+	var element = getElementFormById(src);
+	if( element == null ) {
+		console.log( "SRC Element not found " + src );
+		return false;
+	}
+	
+	return setElementValue( dst, element.innerHTML );
+}
+
+function copyElementVH(src, dst) {
+	var element = getElementFormById(src);
+	if( element == null ) {
+		console.log( "SRC Element not found " + src );
+		return false;
+	}
+	
+	return setElementHTML( dst, element.value );
+}
+
+function copyElementHH(src, dst) {
+	var element = getElementFormById(src);
+	if( element == null ) {
+		console.log( "SRC Element not found " + src );
+		return false;
+	}
+	
+	return setElementHTML( dst, element.innerHTML );
+}
+
+function removeError( id, idMsg, removeS )
+{
+	if( removeS.length == 0 )
+		return false;
+	
+	var element = getElementFormById(idMsg);
+	if( element == null )
+		return false;
+	
+	if( element.innerHTML == '' )
+		return true;
+
+	element.innerHTML = '';
+	
+	var dataId='[data-id="'+id+'"]';
+	var elementId=$(dataId)[0];
+	
+	var classNameUpdate = elementId.className.replace(removeS, '');
+	elementId.className = classNameUpdate;
+	return true;
+}
+
+function doCollapse(collapse, id)
+{
+	var elementCollapse = document.getElementById(id);
+	if( elementCollapse == null ) {
+		return;
+	}
+	if( collapse )
+		elementCollapse.className = "collapsible-content comp__body collapse in";
+	else
+		elementCollapse.className = "collapsible-content comp__body collapse";
+}	             
+
+function onChangeLaufzeit(element, event)
+{
+	return;
+}
+
+// Datepicker start / end Datum
+// ----------------------------------------------------
+var individuellerZeitraum = 'Individueller Zeitraum';
+function clickOnLoad() {
+	document.getElementById('contentForm:btnLoad').onclick();
+}
+
+function periodChanged(periodElement) {
+	
+	var periodLabel = periodElement.options[periodElement.selectedIndex].innerHTML;
+	setElementValue( 'selectedItem', periodLabel );
+	if( periodLabel != individuellerZeitraum ) {
+		
+		var argsDate = periodElement.value.split('-');
+		setElementValue('contentForm:inbox-datetimepicker-start', argsDate[0] );
+		setElementValue('contentForm:inbox-datetimepicker-end', argsDate[1] );
+		clickOnLoad();
+	}
+}
+
+function onDatumClick() {
+
+	var periodLabel = getElementFormById('selectedItem');
+	if( periodLabel.value == individuellerZeitraum )
+		return;
+	
+	var buttonElement = $('button[data-id="contentForm:period"]');
+	if( buttonElement != null )
+		buttonElement[0].firstChild.innerHTML = individuellerZeitraum;
+	
+	periodLabel.value = individuellerZeitraum;
+}
+
+function getBrowserVersion() {
+	var nVer = navigator.appVersion;
+	var nAgt = navigator.userAgent;
+	var browserName  = navigator.appName;
+	var fullVersion  = ''+parseFloat(navigator.appVersion); 
+	var majorVersion = parseInt(navigator.appVersion,10);
+	var nameOffset,verOffset,ix;
+	
+	// In Opera 15+, the true version is after "OPR/" 
+	if ((verOffset=nAgt.indexOf("OPR/"))!=-1) {
+	 browserName = "Opera";
+	 fullVersion = nAgt.substring(verOffset+4);
+	}
+	// In older Opera, the true version is after "Opera" or after "Version"
+	else if ((verOffset=nAgt.indexOf("Opera"))!=-1) {
+	 browserName = "Opera";
+	 fullVersion = nAgt.substring(verOffset+6);
+	 if ((verOffset=nAgt.indexOf("Version"))!=-1) 
+	   fullVersion = nAgt.substring(verOffset+8);
+	}
+	// In MSIE, the true version is after "MSIE" in userAgent
+	else if ((verOffset=nAgt.indexOf("MSIE"))!=-1) {
+	 browserName = "Microsoft Internet Explorer";
+	 fullVersion = nAgt.substring(verOffset+5);
+	}
+	else if(nAgt.match(/Trident.*rv\:11\./)) {
+		browserName = "Microsoft Internet Explorer";
+		 fullVersion = 11;
+	}
+	//In Edge, the true version is after "Chrome" 
+	else if ((verOffset=nAgt.indexOf("Edge"))!=-1) {
+	 browserName = "Edge";
+	 fullVersion = nAgt.substring(verOffset+5);
+	}
+	// In Chrome, the true version is after "Chrome" 
+	else if ((verOffset=nAgt.indexOf("Chrome"))!=-1) {
+	 browserName = "Chrome";
+	 fullVersion = nAgt.substring(verOffset+7);
+	}
+	// In Safari, the true version is after "Safari" or after "Version" 
+	else if ((verOffset=nAgt.indexOf("Safari"))!=-1) {
+	 browserName = "Safari";
+	 fullVersion = nAgt.substring(verOffset+7);
+	 if ((verOffset=nAgt.indexOf("Version"))!=-1) 
+	   fullVersion = nAgt.substring(verOffset+8);
+	}
+	// In Firefox, the true version is after "Firefox" 
+	else if ((verOffset=nAgt.indexOf("Firefox"))!=-1) {
+	 browserName = "Firefox";
+	 fullVersion = nAgt.substring(verOffset+8);
+	}
+	// In most other browsers, "name/version" is at the end of userAgent 
+	else if ( (nameOffset=nAgt.lastIndexOf(' ')+1) < 
+	          (verOffset=nAgt.lastIndexOf('/')) ) 
+	{
+	 browserName = nAgt.substring(nameOffset,verOffset);
+	 fullVersion = nAgt.substring(verOffset+1);
+	 if (browserName.toLowerCase()==browserName.toUpperCase()) {
+	  browserName = navigator.appName;
+	 }
+	}
+	// trim the fullVersion string at semicolon/space if present
+//	if ((ix=fullVersion.indexOf(";"))!=-1)
+//	   fullVersion=fullVersion.substring(0,ix);
+//	if ((ix=fullVersion.indexOf(" "))!=-1)
+//	   fullVersion=fullVersion.substring(0,ix);
+	
+	majorVersion = parseInt(''+fullVersion,10);
+	if (isNaN(majorVersion)) {
+	 fullVersion  = ''+parseFloat(navigator.appVersion); 
+	 majorVersion = parseInt(navigator.appVersion,10);
+	}
+	
+	return browserName + " " + fullVersion;
+	
+}
+//----------------------------------------------------
+
+function nextField(next, ausError) {
+
+	if (next && "" != next) {
+		var field = getElementFormById(next);
+		if (!field) {
+			return;
+		}
+		next = field.name;
+		// Sonderbehandlung wegen Radiobuttons
+		if (!field.offsetParent) {
+			field = document.getElementById(next + "-1");
+		}
+		if (field && field.focus) {
+			var actElemId = "";
+			if (document.activeElement) {
+				actElemId = document.activeElement.id;
+			}
+			if (field.id !=  actElemId && ausError) {
+				field.focus();
+				if (field && field.select) {
+					field.select();
+				}
+			}
+		}
+	} else {
+		if (nextFocusField && "" != nextFocusField) {
+			var field = getElementFormById(nextFocusField);
+			if (field && field.focus) {
+				var actElemId = "";
+				if (document.activeElement) {
+					actElemId = document.activeElement.id;
+				}
+				if (field.id !=  actElemId || ausError) {
+					field.focus();
+					if (field && field.select) {
+						field.select();
+					}
+				}
+			}
+			nextFocusField = "";
+		}
+	}
+}
